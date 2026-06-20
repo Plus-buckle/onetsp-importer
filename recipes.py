@@ -14,7 +14,9 @@ for thisfile in files:
         while True:
             line = file.readline()
             if line.startswith("URL:"):
-                URLs.append(line.strip("URL: "))
+                clean_line = line.removeprefix("URL: ")
+                clean_line = clean_line.rstrip("\n")
+                URLs.append(clean_line)
                 break
             if not line:
                 break  # Stop when end of file is reached
