@@ -47,7 +47,26 @@ for thisfile in files:
                 continue
             if "INGREDIENTS" in line:
                 desc_done = True
-                continue
+                current["ingred"] = ""
+                file.readline()
+                line = file.readline()
+                while "DIRECTIONS" not in line:
+                    current["ingred"] += line
+                    line = file.readline()
+                current["dir"] = ""
+                file.readline()
+                line = file.readline()
+                while "Recipe end" not in line:
+                    current["dir"] += line
+                    line = file.readline()
+                    if "NOTES" in line:
+                        current["notes"] = ""
+                        file.readline()
+                        line = file.readline()
+                        while "Recipe end" not in line:
+                            current["notes"] += line
+                            line = file.readline()
+                        break
             if line != "\n" and not desc_done:
                 current["desc"] = ""
                 desc_done = True
