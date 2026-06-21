@@ -3,6 +3,18 @@
 import os
 import pprint
 
+
+def clean_text(text, handle_ws=False):
+    new_text = text.replace("â€™", "'")
+    new_text = new_text.replace("Â", "")
+    new_text = new_text.replace("Ã—", "x")
+    new_text = new_text.replace("â…“", "⅓")
+    new_text = new_text.replace("â…›", "⅛")
+    if handle_ws:
+        new_text = new_text.strip()
+    return new_text
+
+
 dir_path = "/home/plus-buckle/recipes/Recipes_20260618/"
 # os.listdir returns everything, so we filter using os.path.isfile
 files = [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
@@ -18,32 +30,27 @@ for thisfile in files:
             if "Recipe exported from One tsp" in line:
                 continue
             if line != "\n" and not current.get("title", False):
-                current["title"] = line.rstrip("\n")
+                current["title"] = clean_text(line, True)
                 continue
             if line.startswith("Yield:"):
                 clean_line = line.removeprefix("Yield: ")
-                clean_line = clean_line.rstrip("\n")
-                current["yield"] = clean_line
+                current["yield"] = clean_text(clean_line, True)
                 continue
             if line.startswith("Prep time:"):
                 clean_line = line.removeprefix("Prep time: ")
-                clean_line = clean_line.rstrip("\n")
-                current["prep"] = clean_line
+                current["prep"] = clean_text(clean_line, True)
                 continue
             if line.startswith("Cooking time:"):
                 clean_line = line.removeprefix("Cooking time: ")
-                clean_line = clean_line.rstrip("\n")
-                current["cook"] = clean_line
+                current["cook"] = clean_text(clean_line, True)
                 continue
             if line.startswith("Total time:"):
                 clean_line = line.removeprefix("Total time: ")
-                clean_line = clean_line.rstrip("\n")
-                current["total"] = clean_line
+                current["total"] = clean_text(clean_line, True)
                 continue
             if line.startswith("URL:"):
                 clean_line = line.removeprefix("URL: ")
-                clean_line = clean_line.rstrip("\n")
-                current["url"] = clean_line
+                current["url"] = clean_text(clean_line, True)
                 continue
             if "INGREDIENTS" in line:
                 desc_done = True
@@ -51,27 +58,27 @@ for thisfile in files:
                 file.readline()
                 line = file.readline()
                 while "DIRECTIONS" not in line:
-                    current["ingred"] += line
+                    current["ingred"] += clean_text(line)
                     line = file.readline()
                 current["dir"] = ""
                 file.readline()
                 line = file.readline()
                 while "Recipe end" not in line:
-                    current["dir"] += line
+                    current["dir"] += clean_text(line)
                     line = file.readline()
                     if "NOTES" in line:
                         current["notes"] = ""
                         file.readline()
                         line = file.readline()
                         while "Recipe end" not in line:
-                            current["notes"] += line
+                            current["notes"] += clean_text(line)
                             line = file.readline()
                         break
             if line != "\n" and not desc_done:
                 current["desc"] = ""
                 desc_done = True
                 while line != "\n":
-                    current["desc"] += line
+                    current["desc"] += clean_text(line)
                     line = file.readline()
             if not line:
                 recipes.append(current)
