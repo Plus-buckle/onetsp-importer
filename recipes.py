@@ -2,6 +2,29 @@
 
 import os
 import pprint
+import re
+
+
+def conv_min(line):
+    time = 0
+    h = re.search(r"(\d{1,2})\shour", line)
+    if h:
+        hours = int(h.group(1))
+        time = hours * 60
+    m = re.search(r"(\d{1,2})\smin", line)
+    if m:
+        time += int(m.group(1))
+    return time
+
+
+def rm_numb(line):
+    return re.sub(r"^\d{1,2}\.\s", "", line)
+
+
+def fix_heading(heading):
+    clean_head = heading.replace(" --", "")
+    clean_head = clean_head.replace("-- ", "#")
+    return clean_head
 
 
 def clean_text(text, handle_ws=False):
@@ -38,15 +61,18 @@ for thisfile in files:
                 continue
             if line.startswith("Prep time:"):
                 clean_line = line.removeprefix("Prep time: ")
-                current["prep"] = clean_text(clean_line, True)
+                clean_line = clean_text(clean_line, True)
+                current["prep"] = conv_min(clean_line)
                 continue
             if line.startswith("Cooking time:"):
                 clean_line = line.removeprefix("Cooking time: ")
-                current["cook"] = clean_text(clean_line, True)
+                clean_line = clean_text(clean_line, True)
+                current["cook"] = conv_min(clean_line)
                 continue
             if line.startswith("Total time:"):
                 clean_line = line.removeprefix("Total time: ")
-                current["total"] = clean_text(clean_line, True)
+                clean_line = clean_text(clean_line, True)
+                current["total"] = conv_min(clean_line)
                 continue
             if line.startswith("URL:"):
                 clean_line = line.removeprefix("URL: ")
@@ -58,13 +84,16 @@ for thisfile in files:
                 file.readline()
                 line = file.readline()
                 while "DIRECTIONS" not in line:
-                    current["ingred"] += clean_text(line)
+                    linetmp = fix_heading(line)
+                    current["ingred"] += clean_text(linetmp)
                     line = file.readline()
                 current["dir"] = ""
                 file.readline()
                 line = file.readline()
                 while "Recipe end" not in line:
-                    current["dir"] += clean_text(line)
+                    linetmp = fix_heading(line)
+                    linetmp = rm_numb(linetmp)
+                    current["dir"] += clean_text(linetmp)
                     line = file.readline()
                     if "NOTES" in line:
                         current["notes"] = ""
