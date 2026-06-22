@@ -4,6 +4,43 @@ import os
 import pprint
 import re
 
+import requests
+
+url = "<url>"
+user = "<user>"
+pw = "<password>"
+
+
+def tamari_import(url, user, pw, recipes):
+    optional = ["description", "prep_time", "cook_time", "total_time", "url"]
+    login = requests.post(
+        f"{url}/api/user/authenticate", json={"email": user, "password": pw}
+    )
+    if login.json()["message"] == "success":
+        token = login.json()["access_token"]
+        auth_header = {"Authorization": f"Bearer {token}"}
+
+        for recipe in recipes:
+            upload = {
+                "title": recipe["title"],
+                "category": "Miscellaneous",
+                "ingredients": recipe["ingred"].split("\n"),
+                "instructions": recipe["dir"].split("\n"),
+            }
+            for o in optional:
+                v = recipe.get(o, False)
+                if v:
+                    upload[o] = v
+
+            notes = recipe.get("notes", False)
+            if notes:
+                upload["notes"] = notes.split("\n")
+
+            _ = requests.post(
+                f"{url}/api/my-recipes/recipe/add", json=upload, headers=auth_header
+            )
+    return
+
 
 def conv_min(line):
     time = 0
@@ -62,17 +99,17 @@ for thisfile in files:
             if line.startswith("Prep time:"):
                 clean_line = line.removeprefix("Prep time: ")
                 clean_line = clean_text(clean_line, True)
-                current["prep"] = conv_min(clean_line)
+                current["prep_time"] = conv_min(clean_line)
                 continue
             if line.startswith("Cooking time:"):
                 clean_line = line.removeprefix("Cooking time: ")
                 clean_line = clean_text(clean_line, True)
-                current["cook"] = conv_min(clean_line)
+                current["cook_time"] = conv_min(clean_line)
                 continue
             if line.startswith("Total time:"):
                 clean_line = line.removeprefix("Total time: ")
                 clean_line = clean_text(clean_line, True)
-                current["total"] = conv_min(clean_line)
+                current["total_time"] = conv_min(clean_line)
                 continue
             if line.startswith("URL:"):
                 clean_line = line.removeprefix("URL: ")
@@ -104,12 +141,13 @@ for thisfile in files:
                             line = file.readline()
                         break
             if line != "\n" and not desc_done:
-                current["desc"] = ""
+                current["description"] = ""
                 desc_done = True
                 while line != "\n":
-                    current["desc"] += clean_text(line)
+                    current["description"] += clean_text(line)
                     line = file.readline()
             if not line:
                 recipes.append(current)
                 break  # Stop when end of file is reached
-pprint.pprint(recipes)
+
+tamari_import(url, user, pw, recipes)
