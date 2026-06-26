@@ -42,6 +42,19 @@ def tamari_import(url, user, pw, recipes):
     return
 
 
+def conv_units(text):
+    new_text = text.replace("ounces", "oz")
+    new_text = new_text.replace("ounce", "oz")
+    new_text = new_text.replace("pounds", "lbs")
+    new_text = new_text.replace("pound", "lb")
+    new_text = new_text.replace("teaspoons", "tsp")
+    new_text = new_text.replace("teaspoon", "tsp")
+    new_text = new_text.replace("tbsp", "Tbsp")
+    new_text = new_text.replace("tablespoons", "Tbsp")
+    new_text = new_text.replace("tablespoon", "Tbsp")
+    return new_text
+
+
 def conv_min(line):
     time = 0
     h = re.search(r"(\d{1,2})\shour", line)
@@ -122,6 +135,7 @@ for thisfile in files:
                 line = file.readline()
                 while "DIRECTIONS" not in line:
                     linetmp = fix_heading(line)
+                    linetmp = conv_units(linetmp)
                     current["ingred"] += clean_text(linetmp)
                     line = file.readline()
                 current["dir"] = ""
