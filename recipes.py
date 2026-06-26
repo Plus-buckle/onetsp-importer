@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
+import json
 import os
 import pprint
 import re
+import sys
 
 import requests
+import yaml
 
 url = "<url>"
 user = "<user>"
@@ -90,9 +93,20 @@ def clean_text(text, handle_ws=False):
     return new_text
 
 
-dir_path = "/home/plus-buckle/recipes/Recipes_20260618/"
+try:
+    with open("config.yaml", "r") as file:
+        config = yaml.safe_load(file)
+except FileNotFoundError:
+    print("Config file not found")
+    sys.exit()
+except PermissionError:
+    print("Permission denied on config file")
+    sys.exit()
+
 # os.listdir returns everything, so we filter using os.path.isfile
+dir_path = config["dir_path"]
 files = [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
+
 
 recipes = []
 # start loop over files
