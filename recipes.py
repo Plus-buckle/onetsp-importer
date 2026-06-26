@@ -83,6 +83,8 @@ def clean_text(text, handle_ws=False):
     new_text = new_text.replace("Ã—", "x")
     new_text = new_text.replace("â…“", "⅓")
     new_text = new_text.replace("â…›", "⅛")
+    new_text = new_text.replace("Ã±", "ñ")
+    new_text = new_text.replace("Ã©", "é")
     if handle_ws:
         new_text = new_text.strip()
     return new_text
