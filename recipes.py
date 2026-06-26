@@ -180,4 +180,9 @@ for thisfile in files:
                 recipes.append(current)
                 break  # Stop when end of file is reached
 
-tamari_import(url, user, pw, recipes)
+if config["exporter"]["name"] == "json":
+    export_file = config["exporter"].get("file", "recipes.json")
+    with open(export_file, "w") as file:
+        json.dump(recipes, file)
+
+# tamari_import(url, user, pw, recipes)
