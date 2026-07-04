@@ -1,5 +1,16 @@
 dir_path: "/home/steve/recipes/Recipes_20260618"
-
+#convert: False   # optional, set to True to convert to unit abreviations, defaults to False
 exporter:
-  name: json
-  file: i-love-food.json
+  # choose exporter type to use, examples below
+  #
+  ### JSON File Exporter
+  #name: json
+  #file: i-love-food.json     # optional, defaults to recipes.json
+  #
+  ### Tamari App Exporter
+  #name: tamari
+  # Required for Tamari
+  #url: "<url>"
+  #user: "<user>"
+  #pw: "<password>"
+  #insecure: False      # optional, set to True if using self-signed cert

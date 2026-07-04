@@ -9,51 +9,70 @@ import sys
 import requests
 import yaml
 
-url = "<url>"
-user = "<user>"
-pw = "<password>"
 
-
-def tamari_import(url, user, pw, recipes):
+def tamari_import(url, user, pw, recipes, insecure=False):
+    # create a list of the optional sections
     optional = ["description", "prep_time", "cook_time", "total_time", "url"]
     login = requests.post(
-        f"{url}/api/user/authenticate", json={"email": user, "password": pw}
+        f"{url}/api/user/authenticate",
+        json={"email": user, "password": pw},
+        verify=insecure,
     )
     if login.json()["message"] == "success":
         token = login.json()["access_token"]
         auth_header = {"Authorization": f"Bearer {token}"}
 
         for recipe in recipes:
+            instructions = []
+            for line in recipe["dir"].split("\n"):
+                # tamari expects headings like "#Heading"
+                linetmp = fix_heading(line)
+                # tamari expects no line numbers
+                linetmp = rm_numb(linetmp)
+                instructions.append(linetmp)
+            ingredients = []
+            for line in recipe["ingred"].split("\n"):
+                # tamari expects headings like "#Heading"
+                linetmp = fix_heading(line)
+                ingredients.append(linetmp)
             upload = {
                 "title": recipe["title"],
                 "category": "Miscellaneous",
-                "ingredients": recipe["ingred"].split("\n"),
-                "instructions": recipe["dir"].split("\n"),
+                "ingredients": ingredients,
+                "instructions": instructions,
             }
             for o in optional:
-                v = recipe.get(o, False)
+                v = recipe.get(o)
                 if v:
                     upload[o] = v
 
-            notes = recipe.get("notes", False)
+            notes = recipe.get("notes")
             if notes:
                 upload["notes"] = notes.split("\n")
 
             _ = requests.post(
-                f"{url}/api/my-recipes/recipe/add", json=upload, headers=auth_header
+                f"{url}/api/my-recipes/recipe/add",
+                json=upload,
+                headers=auth_header,
+                verify=insecure,
             )
     return
 
 
 def conv_units(text):
+    # order matters when converting units!
     new_text = text.replace("ounces", "oz")
     new_text = new_text.replace("ounce", "oz")
     new_text = new_text.replace("pounds", "lbs")
     new_text = new_text.replace("pound", "lb")
     new_text = new_text.replace("teaspoons", "tsp")
+    new_text = new_text.replace("Teaspoons", "tsp")
+    new_text = new_text.replace("Teaspoon", "tsp")
     new_text = new_text.replace("teaspoon", "tsp")
     new_text = new_text.replace("tbsp", "Tbsp")
+    new_text = new_text.replace("Tablespoons", "Tbsp")
     new_text = new_text.replace("tablespoons", "Tbsp")
+    new_text = new_text.replace("Tablespoon", "Tbsp")
     new_text = new_text.replace("tablespoon", "Tbsp")
     return new_text
 
@@ -86,8 +105,11 @@ def clean_text(text, handle_ws=False):
     new_text = new_text.replace("Ã—", "x")
     new_text = new_text.replace("â…“", "⅓")
     new_text = new_text.replace("â…›", "⅛")
+    new_text = new_text.replace("â€¦", "...")
     new_text = new_text.replace("Ã±", "ñ")
     new_text = new_text.replace("Ã©", "é")
+    new_text = new_text.replace("▢", "")
+    new_text = new_text.replace("â„", "¾")
     if handle_ws:
         new_text = new_text.strip()
     return new_text
@@ -150,17 +172,17 @@ for thisfile in files:
                 file.readline()
                 line = file.readline()
                 while "DIRECTIONS" not in line:
-                    linetmp = fix_heading(line)
-                    linetmp = conv_units(linetmp)
+                    if config.get("convert"):
+                        linetmp = conv_units(line)
+                    else:
+                        linetmp = line
                     current["ingred"] += clean_text(linetmp)
                     line = file.readline()
                 current["dir"] = ""
                 file.readline()
                 line = file.readline()
                 while "Recipe end" not in line:
-                    linetmp = fix_heading(line)
-                    linetmp = rm_numb(linetmp)
-                    current["dir"] += clean_text(linetmp)
+                    current["dir"] += clean_text(line)
                     line = file.readline()
                     if "NOTES" in line:
                         current["notes"] = ""
@@ -184,5 +206,18 @@ if config["exporter"]["name"] == "json":
     export_file = config["exporter"].get("file", "recipes.json")
     with open(export_file, "w") as file:
         json.dump(recipes, file)
-
-# tamari_import(url, user, pw, recipes)
+elif config["exporter"]["name"] == "tamari":
+    url = config["exporter"].get("url")
+    user = config["exporter"].get("user")
+    pw = config["exporter"].get("pw")
+    insec = config["exporter"].get("insecure", False)
+    if not url:
+        print("url parameter not found in config file")
+        sys.exit()
+    if not user:
+        print("user parameter not found in config file")
+        sys.exit()
+    if not pw:
+        print("pw parameter not found in config file")
+        sys.exit()
+    tamari_import(url, user, pw, recipes, insec)
