@@ -11,6 +11,16 @@ import yaml
 
 
 def tamari_import(url, user, pw, recipes, insecure=False):
+    """
+    import all recipe data into the Tamari app (https://github.com/alexbates/Tamari)
+
+        Parameters are:
+            url to app
+            username for login
+            password for login
+            recipe data as list of dicts
+            insecure option
+    """
     # create a list of the optional sections
     optional = ["description", "prep_time", "cook_time", "total_time", "url"]
     login = requests.post(
@@ -60,6 +70,15 @@ def tamari_import(url, user, pw, recipes, insecure=False):
 
 
 def conv_units(text):
+    """
+    convert all units to abbreviation
+
+    parameters:
+        text (str): string in the format "2 ounces cherry tomatos"
+
+    returns:
+        text (str): string in the format "2 oz. cherry tomatos"
+    """
     # order matters when converting units!
     new_text = text.replace("ounces", "oz")
     new_text = new_text.replace("ounce", "oz")
@@ -78,6 +97,15 @@ def conv_units(text):
 
 
 def conv_min(line):
+    """
+    converts Onetsp time format
+
+    parameters:
+        line: string in the format "2 hours, 30 minutes"
+
+    returns:
+        time (int): total number of minutes
+    """
     time = 0
     h = re.search(r"(\d{1,2})\shour", line)
     if h:
@@ -90,16 +118,44 @@ def conv_min(line):
 
 
 def rm_numb(line):
+    """
+    removes Markdown-style numbering from the beginning of a string
+
+    parameters:
+        line: string in the format "3. add flour to mix and stir"
+
+    returns:
+        line: string in the format "add flour to mix and stir"
+    """
     return re.sub(r"^\d{1,2}\.\s", "", line)
 
 
 def fix_heading(heading):
+    """
+    converts Onetsp headings to Markdown-style
+
+    parameters:
+        heading (str): line with possible heading
+
+    returns:
+        line (str): line with Markdown heading
+    """
     clean_head = heading.replace(" --", "")
     clean_head = clean_head.replace("-- ", "#")
     return clean_head
 
 
 def clean_text(text, handle_ws=False):
+    """
+    converts special character format to normal character format
+
+    parameters:
+        text (str): string in the format " â„ cup of flour "
+        handle_ws (ws): white space in a string
+
+    returns:
+        text (str): string in the format "¾ cup of flour"
+    """
     new_text = text.replace("â€™", "'")
     new_text = new_text.replace("Â", "")
     new_text = new_text.replace("Ã—", "x")
@@ -113,6 +169,96 @@ def clean_text(text, handle_ws=False):
     if handle_ws:
         new_text = new_text.strip()
     return new_text
+
+
+def read_recipes(config, files):
+    """
+    opens each recipe file and loads the contents
+
+    parameters:
+        config: parameters from config file
+        files: list of recipe files
+
+    returns:
+        recipes (list): list of dicts containing recipes
+    """
+    recipes = []
+    dir_path = config["dir_path"]
+    # start loop over files
+    for thisfile in files:
+        with open(os.path.join(dir_path, thisfile), "r") as file:
+            current = {}
+            desc_done = False
+            while True:
+                line = file.readline()
+                if "Recipe exported from One tsp" in line:
+                    continue
+                if line != "\n" and not current.get("title", False):
+                    current["title"] = clean_text(line, True)
+                    continue
+                if line.startswith("Yield:"):
+                    clean_line = line.removeprefix("Yield: ")
+                    current["yield"] = clean_text(clean_line, True)
+                    continue
+                if line.startswith("Prep time:"):
+                    clean_line = line.removeprefix("Prep time: ")
+                    clean_line = clean_text(clean_line, True)
+                    current["prep_time"] = conv_min(clean_line)
+                    continue
+                if line.startswith("Cooking time:"):
+                    clean_line = line.removeprefix("Cooking time: ")
+                    clean_line = clean_text(clean_line, True)
+                    current["cook_time"] = conv_min(clean_line)
+                    continue
+                if line.startswith("Total time:"):
+                    clean_line = line.removeprefix("Total time: ")
+                    clean_line = clean_text(clean_line, True)
+                    current["total_time"] = conv_min(clean_line)
+                    continue
+                if line.startswith("URL:"):
+                    clean_line = line.removeprefix("URL: ")
+                    current["url"] = clean_text(clean_line, True)
+                    continue
+                if "INGREDIENTS" in line:
+                    # if we hit ingredients section, we had to have
+                    # already passed the (optional) description section
+                    desc_done = True
+                    current["ingred"] = ""
+                    file.readline()
+                    line = file.readline()
+                    # while we haven't found the directions heading,
+                    # we are in the ingredients section
+                    while "DIRECTIONS" not in line:
+                        if config.get("convert"):
+                            linetmp = conv_units(line)
+                        else:
+                            linetmp = line
+                        current["ingred"] += clean_text(linetmp)
+                        line = file.readline()
+                    current["dir"] = ""
+                    file.readline()
+                    line = file.readline()
+                    while "Recipe end" not in line:
+                        current["dir"] += clean_text(line)
+                        line = file.readline()
+                        if "NOTES" in line:
+                            current["notes"] = ""
+                            file.readline()
+                            line = file.readline()
+                            while "Recipe end" not in line:
+                                current["notes"] += clean_text(line)
+                                line = file.readline()
+                            break
+                if line != "\n" and not desc_done:
+                    current["description"] = ""
+                    desc_done = True
+                    while line != "\n":
+                        current["description"] += clean_text(line)
+                        line = file.readline()
+                if not line:
+                    recipes.append(current)
+                    break  # Stop when end of file is reached
+    return recipes
 
 
 try:
@@ -129,78 +275,7 @@ except PermissionError:
 dir_path = config["dir_path"]
 files = [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
 
-
-recipes = []
-# start loop over files
-for thisfile in files:
-    with open(os.path.join(dir_path, thisfile), "r") as file:
-        current = {}
-        desc_done = False
-        while True:
-            line = file.readline()
-            if "Recipe exported from One tsp" in line:
-                continue
-            if line != "\n" and not current.get("title", False):
-                current["title"] = clean_text(line, True)
-                continue
-            if line.startswith("Yield:"):
-                clean_line = line.removeprefix("Yield: ")
-                current["yield"] = clean_text(clean_line, True)
-                continue
-            if line.startswith("Prep time:"):
-                clean_line = line.removeprefix("Prep time: ")
-                clean_line = clean_text(clean_line, True)
-                current["prep_time"] = conv_min(clean_line)
-                continue
-            if line.startswith("Cooking time:"):
-                clean_line = line.removeprefix("Cooking time: ")
-                clean_line = clean_text(clean_line, True)
-                current["cook_time"] = conv_min(clean_line)
-                continue
-            if line.startswith("Total time:"):
-                clean_line = line.removeprefix("Total time: ")
-                clean_line = clean_text(clean_line, True)
-                current["total_time"] = conv_min(clean_line)
-                continue
-            if line.startswith("URL:"):
-                clean_line = line.removeprefix("URL: ")
-                current["url"] = clean_text(clean_line, True)
-                continue
-            if "INGREDIENTS" in line:
-                desc_done = True
-                current["ingred"] = ""
-                file.readline()
-                line = file.readline()
-                while "DIRECTIONS" not in line:
-                    if config.get("convert"):
-                        linetmp = conv_units(line)
-                    else:
-                        linetmp = line
-                    current["ingred"] += clean_text(linetmp)
-                    line = file.readline()
-                current["dir"] = ""
-                file.readline()
-                line = file.readline()
-                while "Recipe end" not in line:
-                    current["dir"] += clean_text(line)
-                    line = file.readline()
-                    if "NOTES" in line:
-                        current["notes"] = ""
-                        file.readline()
-                        line = file.readline()
-                        while "Recipe end" not in line:
-                            current["notes"] += clean_text(line)
-                            line = file.readline()
-                        break
-            if line != "\n" and not desc_done:
-                current["description"] = ""
-                desc_done = True
-                while line != "\n":
-                    current["description"] += clean_text(line)
-                    line = file.readline()
-            if not line:
-                recipes.append(current)
-                break  # Stop when end of file is reached
+recipes = read_recipes(config, files)
 
 if config["exporter"]["name"] == "json":
     export_file = config["exporter"].get("file", "recipes.json")
