@@ -26,7 +26,7 @@ def tamari_import(url, user, pw, recipes, insecure=False):
     login = requests.post(
         f"{url}/api/user/authenticate",
         json={"email": user, "password": pw},
-        verify=insecure,
+        verify=not insecure,
     )
     if login.json()["message"] == "success":
         token = login.json()["access_token"]
@@ -64,7 +64,7 @@ def tamari_import(url, user, pw, recipes, insecure=False):
                 f"{url}/api/my-recipes/recipe/add",
                 json=upload,
                 headers=auth_header,
-                verify=insecure,
+                verify=not insecure,
             )
     return
 
