@@ -80,10 +80,8 @@ def conv_units(text):
         text (str): string in the format "2 oz. cherry tomatos"
     """
     # order matters when converting units!
-    new_text = text.replace("ounces", "oz")
-    new_text = new_text.replace("ounce", "oz")
-    new_text = new_text.replace("pounds", "lbs")
-    new_text = new_text.replace("pound", "lb")
+    new_text = re.sub(r"(\d+)\s*ounce[s]?", r"\1 oz", text)
+    new_text = re.sub(r"(\d+)\s*pound", r"\1 lb", new_text)
     new_text = new_text.replace("teaspoons", "tsp")
     new_text = new_text.replace("Teaspoons", "tsp")
     new_text = new_text.replace("Teaspoon", "tsp")
@@ -107,11 +105,11 @@ def conv_min(line):
         time (int): total number of minutes
     """
     time = 0
-    h = re.search(r"(\d{1,2})\shour", line)
+    h = re.search(r"(\d{1,2})\s*hour", line)
     if h:
         hours = int(h.group(1))
         time = hours * 60
-    m = re.search(r"(\d{1,2})\smin", line)
+    m = re.search(r"(\d{1,2})\s*min", line)
     if m:
         time += int(m.group(1))
     return time
