@@ -259,38 +259,39 @@ def read_recipes(config, files):
     return recipes
 
 
-try:
-    with open("config.yaml", "r") as file:
-        config = yaml.safe_load(file)
-except FileNotFoundError:
-    print("Config file not found")
-    sys.exit()
-except PermissionError:
-    print("Permission denied on config file")
-    sys.exit()
-
-# os.listdir returns everything, so we filter using os.path.isfile
-dir_path = config["dir_path"]
-files = [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
-
-recipes = read_recipes(config, files)
-
-if config["exporter"]["name"] == "json":
-    export_file = config["exporter"].get("file", "recipes.json")
-    with open(export_file, "w") as file:
-        json.dump(recipes, file)
-elif config["exporter"]["name"] == "tamari":
-    url = config["exporter"].get("url")
-    user = config["exporter"].get("user")
-    pw = config["exporter"].get("pw")
-    insec = config["exporter"].get("insecure", False)
-    if not url:
-        print("url parameter not found in config file")
+if __name__ == "__main__":
+    try:
+        with open("config.yaml", "r") as file:
+            config = yaml.safe_load(file)
+    except FileNotFoundError:
+        print("Config file not found")
         sys.exit()
-    if not user:
-        print("user parameter not found in config file")
+    except PermissionError:
+        print("Permission denied on config file")
         sys.exit()
-    if not pw:
-        print("pw parameter not found in config file")
-        sys.exit()
-    tamari_import(url, user, pw, recipes, insec)
+
+    # os.listdir returns everything, so we filter using os.path.isfile
+    dir_path = config["dir_path"]
+    files = [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
+
+    recipes = read_recipes(config, files)
+
+    if config["exporter"]["name"] == "json":
+        export_file = config["exporter"].get("file", "recipes.json")
+        with open(export_file, "w") as file:
+            json.dump(recipes, file)
+    elif config["exporter"]["name"] == "tamari":
+        url = config["exporter"].get("url")
+        user = config["exporter"].get("user")
+        pw = config["exporter"].get("pw")
+        insec = config["exporter"].get("insecure", False)
+        if not url:
+            print("url parameter not found in config file")
+            sys.exit()
+        if not user:
+            print("user parameter not found in config file")
+            sys.exit()
+        if not pw:
+            print("pw parameter not found in config file")
+            sys.exit()
+        tamari_import(url, user, pw, recipes, insec)
