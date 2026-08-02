@@ -8,7 +8,7 @@ import sys
 
 import requests
 import yaml
-
+import ftfy
 
 def tamari_import(url, user, pw, recipes, insecure=False):
     """
@@ -154,16 +154,12 @@ def clean_text(text, handle_ws=False):
     returns:
         text (str): string in the format "¾ cup of flour"
     """
-    new_text = text.replace("â€™", "'")
-    new_text = new_text.replace("Â", "")
-    new_text = new_text.replace("Ã—", "x")
-    new_text = new_text.replace("â…“", "⅓")
-    new_text = new_text.replace("â…›", "⅛")
-    new_text = new_text.replace("â€¦", "...")
-    new_text = new_text.replace("Ã±", "ñ")
-    new_text = new_text.replace("Ã©", "é")
-    new_text = new_text.replace("▢", "")
-    new_text = new_text.replace("â„", "¾")
+    new_text = ftfy.fix_text(text)
+    # characters below are not converted, see:
+    # https://github.com/rspeer/python-ftfy/issues/233
+    new_text = new_text.replace('â…\"', "⅓")
+    new_text = new_text.replace('â…›', "⅛")
+    new_text = new_text.replace('▢', "")
     if handle_ws:
         new_text = new_text.strip()
     return new_text
